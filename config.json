@@ -1,0 +1,12 @@
+{
+  "clickhouse_user": "default",
+  "clickhouse_password": "",
+  "clickhouse_host": "localhost",
+  "clickhouse_port": 9000,
+  "table_name": "your_table_name",
+  "schema_file_path": null,
+  "total_inserts": 1000,
+  "inserts_per_query": 100,
+  "generation_seed": null,
+  "hints": {}
+}
