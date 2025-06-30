@@ -123,5 +123,5 @@ class DataGenerator:
         if generator:
             return generator()
         else:
-            logging.warning("Неизвестный тип колонки '%s'. Возвращаем NULL.", col_type)
+            logging.warning("Unknown column type '%s'. Return NULL.", col_type)
             return None

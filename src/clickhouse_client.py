@@ -31,7 +31,7 @@ class ClickHouseDataLoader:
             self.client = Client(host=host, port=port, user=user, password=password)
             self.client.execute('SELECT 1')
         except Exception as e:
-            logging.error("Не удалось подключиться к ClickHouse: %s", e)
+            logging.error("Failed to connect to ClickHouse: %s", e)
             raise
 
     def execute_query(self, query: str, params: Any = None) -> list:
@@ -48,7 +48,7 @@ class ClickHouseDataLoader:
         try:
             return self.client.execute(query, params)
         except Exception as e:
-            logging.error("Ошибка выполнения запроса '%s...': %s", query[:100], e)
+            logging.error("Query execution error '%s...': %s", query[:100], e)
             raise
 
     def insert_data(self, table_name: str, data: List[Dict]):
@@ -63,7 +63,7 @@ class ClickHouseDataLoader:
             None
         """
         if not data:
-            logging.warning("Нет данных для вставки в таблицу '%s'.", table_name)
+            logging.warning("No data to insert into table '%s'.", table_name)
             return
 
         columns = data[0].keys()
@@ -72,7 +72,7 @@ class ClickHouseDataLoader:
         try:
             self.client.execute(insert_query, data)
         except Exception as e:
-            logging.error("Ошибка при вставке данных в таблицу '%s': %s", table_name, e)
+            logging.error("Error inserting data into table '%s': %s", table_name, e)
             raise
 
     def get_table_schema(self, table_name: str, database: str = 'default') -> list[dict]:

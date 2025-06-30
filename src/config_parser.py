@@ -37,12 +37,12 @@ class ConfigParser:
             ValueError: Если файл имеет неверный JSON-формат.
         """
         if not os.path.exists(self.config_path):
-            raise FileNotFoundError(f"Файл конфигурации не найден: {self.config_path}")
+            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
         with open(self.config_path, 'r', encoding='utf-8') as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError as e:
-                raise ValueError(f"Ошибка парсинга JSON в файле {self.config_path}: {e}")
+                raise ValueError(f"JSON parsing error in file {self.config_path}: {e}")
 
     def get_setting(self, key: str, default: Any = None, required: bool = False) -> Any:
         """
@@ -61,7 +61,7 @@ class ConfigParser:
         """
         value = self.config.get(key, default)
         if required and value is None:
-            raise ValueError(f"Обязательная настройка '{key}' отсутствует в файле конфигурации.")
+            raise ValueError(f"Required setting '{key}' is missing in the configuration file.")
         return value
 
     def get_clickhouse_credentials(self) -> Dict[str, Any]:

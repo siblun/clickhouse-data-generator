@@ -10,10 +10,9 @@
 6. Выводит в консоль лог о ходе выполнения.
 """
 
+import logging
 import os
 import sys
-import logging
-from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -34,7 +33,7 @@ def main():
         if not os.path.exists(config_path):
             config_path = os.path.join(os.path.dirname(__file__), '..', config_path)
 
-        logging.info("Загрузка конфигурации из %s...", config_path)
+        logging.info("Loading configuration from %s...", config_path)
         config_parser = ConfigParser(config_path)
         ch_creds = config_parser.get_clickhouse_credentials()
         table_info = config_parser.get_table_info()
@@ -47,9 +46,9 @@ def main():
         generation_seed = gen_settings['generation_seed']
         hints = gen_settings['hints']
 
-        logging.info("Конфигурация загружена. Таблица: %s, Всего записей к вставке: %d", table_name, total_inserts)
+        logging.info("Configuration loaded. Table: %s, Total records to insert: %d", table_name, total_inserts)
 
-        logging.info("Подключение к ClickHouse по адресу %s:%d...", ch_creds['host'], ch_creds['port'])
+        logging.info("Connecting to ClickHouse at %s:%d...", ch_creds['host'], ch_creds['port'])
         clickhouse_loader = ClickHouseDataLoader(
             host=ch_creds['host'],
             port=ch_creds['port'],
@@ -63,23 +62,23 @@ def main():
         if schema_file_path:
             full_schema_path = os.path.abspath(os.path.join(os.path.dirname(config_path), schema_file_path))
             if os.path.exists(full_schema_path):
-                logging.info("Попытка парсинга схемы из файла: %s", full_schema_path)
+                logging.info("Attempting to parse schema from file: %s", full_schema_path)
                 schema = schema_parser.parse_schema_from_sql_file(full_schema_path)
 
         if not schema:
-            logging.info("Попытка получения схемы для таблицы '%s' из ClickHouse...", table_name)
+            logging.info("Attempting to retrieve schema for table '%s' from ClickHouse...", table_name)
             schema = schema_parser.get_schema_from_clickhouse(table_name)
 
         if not schema:
             raise ValueError(
-                "Не удалось получить схему таблицы ни из файла, ни из ClickHouse. "
-                "Убедитесь, что таблица существует или путь к SQL-файлу корректен."
+                "Failed to retrieve table schema from neither file nor ClickHouse."
+                "Ensure the table exists or the path to the SQL file is correct."
             )
 
-        logging.info("Схема таблицы '%s' успешно получена.", table_name)
+        logging.info("Table schema '%s' successfully retrieved.", table_name)
 
         data_generator = DataGenerator(schema, hints=hints, seed=generation_seed)
-        logging.info("Начинаем генерацию и вставку %d строк...", total_inserts)
+        logging.info("Starting generation and insertion of %d rows...", total_inserts)
 
         generated_rows_count = 0
         current_batch = []
@@ -91,19 +90,19 @@ def main():
             if len(current_batch) >= inserts_per_query or (i == total_inserts - 1 and current_batch):
                 clickhouse_loader.insert_data(table_name, current_batch)
                 generated_rows_count += len(current_batch)
-                logging.info("  Вставлено %d/%d строк...", generated_rows_count, total_inserts)
+                logging.info("Inserted %d/%d rows...", generated_rows_count, total_inserts)
                 current_batch = []
 
-        logging.info("--- Генерация и вставка данных завершена успешно! ---")
+        logging.info("--- Data generation and insertion completed successfully! ---")
 
     except FileNotFoundError as e:
-        logging.error("Критическая ошибка: Файл не найден. %s", e)
+        logging.error("Critical error: File not found. %s", e)
     except KeyError as e:
-        logging.error("Ошибка конфигурации: отсутствует обязательный ключ %s в config.json.", e)
+        logging.error("Configuration error: Missing required key %s in config.json.", e)
     except ValueError as e:
-        logging.error("Ошибка конфигурации или схемы: %s", e)
+        logging.error("Configuration or schema error: %s", e)
     except Exception as e:
-        logging.critical("Произошла непредвиденная ошибка: %s", e, exc_info=True)
+        logging.critical("An unexpected error occurred: %s", e, exc_info=True)
 
 
 if __name__ == '__main__':

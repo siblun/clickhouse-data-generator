@@ -47,7 +47,7 @@ class SchemaParser:
 
             match = re.search(r'CREATE\s+TABLE\s+\S+\s*\((.+)\)\s*ENGINE', sql_ddl, re.DOTALL | re.IGNORECASE)
             if not match:
-                logging.warning("Не удалось найти блок 'CREATE TABLE (...)' в SQL файле: %s", file_path)
+                logging.warning("Could not find 'CREATE TABLE (...)' block in SQL file: %s", file_path)
                 return []
 
             columns_str = match.group(1)
@@ -64,10 +64,10 @@ class SchemaParser:
 
             return columns
         except FileNotFoundError:
-            logging.error("Файл схемы не найден по пути: %s", file_path)
+            logging.error("Schema file not found at path: %s", file_path)
             return []
         except Exception as e:
-            logging.error("Ошибка при парсинге SQL-файла схемы '%s': %s", file_path, e)
+            logging.error("Error parsing SQL schema file '%s': %s", file_path, e)
             return []
 
     def get_schema_from_clickhouse(self, table_name: str, database: str = "default") -> List[Dict]:
@@ -88,5 +88,5 @@ class SchemaParser:
             result = self.client.execute(query, params)
             return [{'name': row[0], 'type': row[1]} for row in result]
         except Exception as e:
-            logging.error("Ошибка при получении схемы из ClickHouse для таблицы '%s': %s", table_name, e)
+            logging.error("Error retrieving schema from ClickHouse for table '%s': %s", table_name, e)
             return []
