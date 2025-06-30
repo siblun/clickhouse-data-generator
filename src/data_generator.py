@@ -1,5 +1,5 @@
 """
-Модуль для генерации тестовых данных на основе схемы таблицы ClickHouse.
+Module for generating test data based on a ClickHouse table schema.
 """
 
 import random
@@ -11,20 +11,20 @@ from typing import List, Dict, Any
 
 class DataGenerator:
     """
-    Класс, отвечающий за генерацию данных, соответствующих схеме таблицы.
+    Class responsible for generating data that conforms to a table schema.
 
-    Поддерживает различные типы данных ClickHouse, "подсказки" (`hints`) для
-    управления диапазонами значений и сид для воспроизводимости результатов.
+    Supports various ClickHouse data types, "hints" for controlling value ranges,
+    and a seed for reproducibility.
     """
 
     def __init__(self, schema: List[Dict], hints: Dict = None, seed: int = None):
         """
-        Инициализирует генератор.
+        Initializes the generator.
 
         Args:
-            schema (List[Dict]): Схема таблицы, список словарей {'name': str, 'type': str}.
-            hints (Dict, optional): "Подсказки" для генерации значений.
-            seed (int, optional): Сид для генератора случайных чисел для воспроизводимости.
+            schema (List[Dict]): Table schema, a list of dictionaries {'name': str, 'type': str}.
+            hints (Dict, optional): "Hints" for value generation.
+            seed (int, optional): Seed for the random number generator for reproducibility.
         """
         self.schema = schema
         self.hints = hints if hints is not None else {}
@@ -33,7 +33,7 @@ class DataGenerator:
 
     def _setup_type_generators(self):
         """
-        Создает сопоставление (маппинг) базовых типов ClickHouse с функциями-генераторами.
+        Creates a mapping of basic ClickHouse types to generator functions.
         """
         self.type_generators = {
             'UInt8': lambda: self.rng.randint(0, 255),
@@ -54,18 +54,18 @@ class DataGenerator:
         }
 
     def _generate_string(self, length_min=5, length_max=15) -> str:
-        """Генерирует случайную строку."""
+        """Generates a random string."""
         length = self.rng.randint(length_min, length_max)
         return ''.join(self.rng.choice(string.ascii_letters + string.digits) for _ in range(length))
 
     def _generate_date(self) -> date:
-        """Генерирует случайную дату за последний год (по умолчанию)."""
+        """Generates a random date within the last year (by default)."""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
         return (start_date + timedelta(days=self.rng.randint(0, 365))).date()
 
     def _generate_datetime(self) -> datetime:
-        """Генерирует случайную дату и время за последний год (по умолчанию)."""
+        """Generates a random datetime within the last year (by default)."""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
         delta_seconds = int((end_date - start_date).total_seconds())
@@ -73,13 +73,13 @@ class DataGenerator:
 
     def generate_row(self) -> Dict[str, Any]:
         """
-        Генерирует одну строку данных в виде словаря.
+        Generates one row of data as a dictionary.
 
-        Проходится по каждой колонке в схеме, определяет, есть ли для нее
-        "подсказка" (`hint`), и генерирует соответствующее значение.
+        Iterates through each column in the schema, checks for a "hint",
+        and generates the corresponding value.
 
         Returns:
-            Dict[str, Any]: Словарь, представляющий одну сгенерированную строку.
+            Dict[str, Any]: A dictionary representing one generated row.
         """
         row = {}
         for col in self.schema:
@@ -124,13 +124,13 @@ class DataGenerator:
 
     def _generate_by_type(self, col_type: str) -> Any:
         """
-        Выбирает и вызывает нужный генератор на основе базового типа колонки.
+        Selects and calls the appropriate generator based on the base column type.
 
         Args:
-            col_type (str): Полный тип колонки из схемы (например, `LowCardinality(String)`).
+            col_type (str): Full column type from the schema (e.g., `LowCardinality(String)`).
 
         Returns:
-            Any: Сгенерированное значение.
+            Any: The generated value.
         """
         base_type = col_type.split('(')[0]
         generator = self.type_generators.get(base_type)
