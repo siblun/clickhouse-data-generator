@@ -88,3 +88,10 @@ class ConfigParser:
             'generation_seed': self.get_setting('generation_seed'),
             'hints': self.get_setting('hints', default={}),
         }
+
+    def get_table_definition(self) -> Dict[str, Any]:
+        """
+        Returns the full table definition for dynamic CREATE TABLE statement.
+        """
+        return self.get_setting('table_definition', required=False, default=None)
+
