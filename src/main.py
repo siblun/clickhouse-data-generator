@@ -1,18 +1,9 @@
-"""
-Главный исполняемый файл для запуска процесса генерации и вставки данных.
-
-Этот скрипт выполняет следующие шаги:
-1. Читает конфигурацию из файла `config.json`.
-2. Устанавливает соединение с ClickHouse.
-3. Определяет схему целевой таблицы (либо из SQL-файла, либо напрямую из БД).
-4. Инициализирует генератор данных на основе схемы и "подсказок" из конфига.
-5. В цикле генерирует данные и вставляет их в таблицу пачками (batch).
-6. Выводит в консоль лог о ходе выполнения.
-"""
-
-import logging
 import os
 import sys
+import re
+import time
+import logging
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -20,6 +11,7 @@ from src.config_parser import ConfigParser
 from src.schema_parser import SchemaParser
 from src.data_generator import DataGenerator
 from src.clickhouse_client import ClickHouseDataLoader
+from clickhouse_driver.errors import ServerException
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -31,7 +23,7 @@ def main():
     try:
         config_path = 'config.json'
         if not os.path.exists(config_path):
-            config_path = os.path.join(os.path.dirname(__file__), '..', config_path)
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'config.json')
 
         logging.info("Loading configuration from %s...", config_path)
         config_parser = ConfigParser(config_path)
@@ -59,25 +51,73 @@ def main():
         schema = []
         schema_parser = SchemaParser(clickhouse_loader.client)
 
-        if schema_file_path:
-            full_schema_path = os.path.abspath(os.path.join(os.path.dirname(config_path), schema_file_path))
-            if os.path.exists(full_schema_path):
-                logging.info("Attempting to parse schema from file: %s", full_schema_path)
-                schema = schema_parser.parse_schema_from_sql_file(full_schema_path)
+        table_exists = False
+        max_retries = 5
+        retry_delay = 2
 
-        if not schema:
-            logging.info("Attempting to retrieve schema for table '%s' from ClickHouse...", table_name)
-            schema = schema_parser.get_schema_from_clickhouse(table_name)
+        for attempt in range(max_retries):
+            logging.info(f"Attempt {attempt + 1}/{max_retries}: Checking existence of table '{table_name}'...")
+            try:
+                current_schema = schema_parser.get_schema_from_clickhouse(table_name)
+                if current_schema:
+                    table_exists = True
+                    schema = current_schema
+                    logging.info(f"Table '{table_name}' found in ClickHouse. Using schema from DB.")
+                    break
+                else:
+                    logging.info(f"Table '{table_name}' not found. Attempting to create...")
+                    if schema_file_path:
+                        full_schema_file_path = os.path.join(os.path.dirname(__file__), '..', schema_file_path)
+                        if os.path.exists(full_schema_file_path):
+                            with open(full_schema_file_path, 'r', encoding='utf-8') as f:
+                                create_table_sql = f.read()
+                            create_table_sql_if_not_exists = re.sub(
+                                r'CREATE\s+TABLE\s+(\S+)',
+                                r'CREATE TABLE IF NOT EXISTS \1',
+                                create_table_sql,
+                                flags=re.IGNORECASE
+                            )
+                            clickhouse_loader.execute_query(create_table_sql_if_not_exists)
+                            logging.info(f"Table '{table_name}' successfully created (or already existed) from file.")
+                            schema = schema_parser.get_schema_from_clickhouse(table_name)
+                            if schema:
+                                table_exists = True
+                                logging.info(f"Table schema for '{table_name}' successfully retrieved after creation.")
+                                break
+                            else:
+                                logging.warning(f"Table '{table_name}' created, but schema not retrieved. Retrying.")
+                        else:
+                            logging.warning(f"Schema file not found at path: {full_schema_file_path}. Cannot create table.")
+                    else:
+                        logging.warning("Schema file path not specified. Cannot create table.")
 
-        if not schema:
+            except ServerException as e:
+                if "already exists" in str(e):
+                    logging.info(f"Table '{table_name}' already exists. Continuing.")
+                    table_exists = True
+                    schema = schema_parser.get_schema_from_clickhouse(table_name)
+                    break
+                else:
+                    logging.error(f"ClickHouse error during table creation/check for '{table_name}': {e}")
+            except Exception as e:
+                logging.error(f"Unexpected error during table creation/check attempt for '{table_name}': {e}")
+
+            if not table_exists and attempt < max_retries - 1:
+                logging.info(f"Waiting {retry_delay} seconds before next attempt...")
+                time.sleep(retry_delay)
+
+        if not table_exists or not schema:
             raise ValueError(
-                "Failed to retrieve table schema from neither file nor ClickHouse."
-                "Ensure the table exists or the path to the SQL file is correct."
+                "Failed to create or retrieve table schema from ClickHouse after multiple attempts. "
+                "Ensure ClickHouse is running, accessible, and the SQL schema file is correct."
             )
 
-        logging.info("Table schema '%s' successfully retrieved.", table_name)
+        logging.info(f"Table schema for '{table_name}' successfully retrieved:")
+        for col in schema:
+            print(f"  - {col['name']}: {col['type']}")
 
         data_generator = DataGenerator(schema, hints=hints, seed=generation_seed)
+
         logging.info("Starting generation and insertion of %d rows...", total_inserts)
 
         generated_rows_count = 0
@@ -86,19 +126,17 @@ def main():
         for i in range(total_inserts):
             row = data_generator.generate_row()
             current_batch.append(row)
-
             if len(current_batch) >= inserts_per_query or (i == total_inserts - 1 and current_batch):
                 clickhouse_loader.insert_data(table_name, current_batch)
                 generated_rows_count += len(current_batch)
-                logging.info("Inserted %d/%d rows...", generated_rows_count, total_inserts)
+                logging.info("  Inserted %d/%d rows...", generated_rows_count, total_inserts)
                 current_batch = []
-
         logging.info("--- Data generation and insertion completed successfully! ---")
+        logging.info(f"Total %d rows inserted into table '{table_name}'.", generated_rows_count)
 
     except FileNotFoundError as e:
         logging.error("Critical error: File not found. %s", e)
-    except KeyError as e:
-        logging.error("Configuration error: Missing required key %s in config.json.", e)
+        print("Пожалуйста, убедитесь, что файл конфигурации и/или файл схемы существуют по указанным путям.")
     except ValueError as e:
         logging.error("Configuration or schema error: %s", e)
     except Exception as e:
