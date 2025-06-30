@@ -1,3 +1,17 @@
+"""
+Main executable file for running the data generation and insertion process.
+
+This script performs the following steps:
+1. Reads configuration from the `config.json` file.
+2. Establishes a connection to ClickHouse.
+3. Dynamically creates the target table from definition in config.json if specified,
+   or ensures it exists.
+4. Determines the schema of the target table directly from ClickHouse.
+5. Initializes the data generator based on the schema and "hints" from the config.
+6. Generates data in batches and inserts them into the table.
+7. Outputs logging messages about the execution progress.
+"""
+
 import logging
 import os
 import re
@@ -28,9 +42,10 @@ def main():
         ch_creds = config_parser.get_clickhouse_credentials()
         table_info = config_parser.get_table_info()
         gen_settings = config_parser.get_generation_settings()
+        table_definition = config_parser.get_table_definition()
 
         table_name = table_info['name']
-        schema_file_path = table_info['schema_file_path']
+        schema_file_path = table_info.get('schema_file_path')
         total_inserts = gen_settings['total_inserts']
         inserts_per_query = gen_settings['inserts_per_query']
         generation_seed = gen_settings['generation_seed']
@@ -48,24 +63,50 @@ def main():
 
         schema_parser = SchemaParser(clickhouse_loader.client)
 
-        if schema_file_path:
+        create_table_sql = None
+        if table_definition:
+            logging.info(f"Attempting to create table '{table_name}' from definition in config.json...")
+            columns_ddl = []
+            for col in table_definition.get('columns', []):
+                columns_ddl.append(f"{col['name']} {col['type']}")
+
+            engine = table_definition.get('engine', 'MergeTree')
+            order_by = table_definition.get('order_by')
+
+            if not columns_ddl:
+                raise ValueError("Table definition in config.json must contain 'columns'.")
+            if not order_by:
+                raise ValueError("Table definition in config.json must contain 'order_by'.")
+
+            columns_str_formatted = ",\n    ".join(columns_ddl)
+            create_table_sql = (
+                f"CREATE TABLE IF NOT EXISTS {table_name} (\n"
+                f"    {columns_str_formatted}\n" 
+                f") ENGINE = {engine}\n"
+                f"ORDER BY {order_by};"
+            )
+        elif schema_file_path:
             full_schema_file_path = os.path.join(os.path.dirname(__file__), '..', schema_file_path)
             if not os.path.exists(full_schema_file_path):
                 raise FileNotFoundError(f"Schema file not found at path: {full_schema_file_path}. "
                                         "Cannot create table from file.")
-
             logging.info(f"Attempting to create table '{table_name}' from schema file: {full_schema_file_path}")
             with open(full_schema_file_path, 'r', encoding='utf-8') as f:
                 create_table_sql = f.read()
 
-            create_table_sql_if_not_exists = re.sub(
+            create_table_sql = re.sub(
                 r'CREATE\s+TABLE\s+(\S+)',
                 r'CREATE TABLE IF NOT EXISTS \1',
                 create_table_sql,
                 flags=re.IGNORECASE
             )
+        else:
+            logging.warning("No table definition found in config.json and no schema_file_path specified. "
+                            "Table creation will be skipped. Ensure the table exists in ClickHouse.")
+
+        if create_table_sql:
             try:
-                clickhouse_loader.execute_query(create_table_sql_if_not_exists)
+                clickhouse_loader.execute_query(create_table_sql)
                 logging.info(f"Table '{table_name}' successfully created or already exists.")
             except ServerException as e:
                 if "already exists" in str(e):
@@ -76,10 +117,6 @@ def main():
             except Exception as e:
                 logging.error(f"Unexpected error during table creation attempt for '{table_name}': %s", e)
                 raise
-        else:
-            logging.warning(
-                "Schema file path is not specified in config.json. Table creation from file will be skipped. "
-                "Ensure the table exists in ClickHouse before running data generation.")
 
         logging.info(f"Retrieving schema for table '{table_name}' from ClickHouse...")
         schema = schema_parser.get_schema_from_clickhouse(table_name)
