@@ -1,5 +1,5 @@
 """
-Модуль для парсинга и валидации файла конфигурации `config.json`.
+Module for parsing and validating the `config.json` configuration file.
 """
 
 import json
@@ -9,32 +9,32 @@ from typing import Any, Dict
 
 class ConfigParser:
     """
-    Класс для чтения и предоставления доступа к настройкам из JSON-файла.
+    Class for reading and providing access to settings from a JSON file.
 
-    При инициализации загружает файл конфигурации и обеспечивает
-    безопасные методы для доступа к его параметрам.
+    Upon initialization, it loads the configuration file and provides
+    safe methods for accessing its parameters.
     """
 
     def __init__(self, config_path: str = 'config.json'):
         """
-        Инициализирует парсер и загружает конфигурацию.
+        Initializes the parser and loads the configuration.
 
         Args:
-            config_path (str): Путь к файлу конфигурации.
+            config_path (str): Path to the configuration file.
         """
         self.config_path = config_path
         self.config = self._load_config()
 
     def _load_config(self) -> Dict[str, Any]:
         """
-        Внутренний метод для загрузки и парсинга JSON-файла.
+        Internal method for loading and parsing the JSON file.
 
         Returns:
-            Dict[str, Any]: Словарь с настройками.
+            Dict[str, Any]: A dictionary with settings.
 
         Raises:
-            FileNotFoundError: Если файл конфигурации не найден.
-            ValueError: Если файл имеет неверный JSON-формат.
+            FileNotFoundError: If the configuration file is not found.
+            ValueError: If the file has an invalid JSON format.
         """
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
@@ -46,18 +46,18 @@ class ConfigParser:
 
     def get_setting(self, key: str, default: Any = None, required: bool = False) -> Any:
         """
-        Безопасно получает значение настройки по ключу.
+        Safely retrieves a setting's value by key.
 
         Args:
-            key (str): Ключ настройки.
-            default (Any, optional): Значение по умолчанию, если ключ отсутствует.
-            required (bool, optional): Если True, вызывает ошибку, если ключ отсутствует.
+            key (str): The setting key.
+            default (Any, optional): The default value if the key is missing.
+            required (bool, optional): If True, raises an error if the key is missing.
 
         Returns:
-            Any: Значение настройки.
+            Any: The setting's value.
 
         Raises:
-            ValueError: Если `required=True` и ключ не найден.
+            ValueError: If `required=True` and the key is not found.
         """
         value = self.config.get(key, default)
         if required and value is None:
@@ -65,7 +65,7 @@ class ConfigParser:
         return value
 
     def get_clickhouse_credentials(self) -> Dict[str, Any]:
-        """Возвращает сгруппированные учетные данные для ClickHouse."""
+        """Returns grouped ClickHouse credentials."""
         return {
             'host': self.get_setting('clickhouse_host', required=True),
             'port': self.get_setting('clickhouse_port', default=9000),
@@ -74,17 +74,17 @@ class ConfigParser:
         }
 
     def get_table_info(self) -> Dict[str, Any]:
-        """Возвращает сгруппированную информацию о целевой таблице."""
+        """Returns grouped information about the target table."""
         return {
             'name': self.get_setting('table_name', required=True),
             'schema_file_path': self.get_setting('schema_file_path'),
         }
 
     def get_generation_settings(self) -> Dict[str, Any]:
-        """Возвращает сгруппированные настройки для процесса генерации данных."""
+        """Returns grouped settings for the data generation process."""
         return {
-            'inserts_per_query': self.get_setting('inserts_per_query', default=1000),
-            'total_inserts': self.get_setting('total_inserts', default=1000),
+            'inserts_per_query': self.get_setting('inserts_per_query', default=10),
+            'total_inserts': self.get_setting('total_inserts', default=10),
             'generation_seed': self.get_setting('generation_seed'),
             'hints': self.get_setting('hints', default={}),
         }
