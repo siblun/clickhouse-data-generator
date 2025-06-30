@@ -101,11 +101,26 @@ class DataGenerator:
                     else:
                         row[col_name] = self.rng.randint(hint[0], hint[1])
                 else:
-                    logging.warning("Нераспознанный формат hint для '%s'. Генерируем по типу.", col_name)
+                    logging.warning("Unknown format hint for '%s'. Generating by type.", col_name)
                     row[col_name] = self._generate_by_type(col_type)
             else:
                 row[col_name] = self._generate_by_type(col_type)
         return row
+
+    def generate_rows_batch(self, count: int) -> List[Dict]:
+        """
+        Generates a batch of 'count' rows.
+
+        Args:
+            count (int): The number of rows to generate for the batch.
+
+        Returns:
+            List[Dict]: A list of dictionaries, each representing a generated row.
+        """
+        batch = []
+        for _ in range(count):
+            batch.append(self.generate_row())
+        return batch
 
     def _generate_by_type(self, col_type: str) -> Any:
         """
