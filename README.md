@@ -24,8 +24,7 @@
 ## Настройка и запуск
 
 1.  **Отредактируйте `config.json`:**
-    Откройте файл config.json и укажите свои данные для подключения к ClickHouse, имя таблицы и параметры генерации.
-    Теперь вы можете определить схему вашей таблицы непосредственно в config.json с помощью секции table_definition. Этот метод автоматически создаст таблицу, если ее нет.
+    Откройте файл config.json и укажите свои данные для подключения к ClickHouse, имя таблицы.
     
     Пример config.json с table_definition:
 
@@ -35,20 +34,7 @@
       "clickhouse_password": "",
       "clickhouse_host": "localhost",
       "clickhouse_port": 9000,
-      "table_name": "users",
-      "table_definition": {
-        "columns": [
-          {"name": "id", "type": "UInt64"},
-          {"name": "mtime", "type": "DateTime64(9, 'UTC')"},
-          {"name": "name", "type": "String"},
-          {"name": "age", "type": "UInt16"},
-          {"name": "is_active", "type": "Bool"},
-          {"name": "created_at", "type": "DateTime"}
-        ],
-        "engine": "MergeTree",
-        "order_by": "id"
-      },
-      "schema_file_path": null,  
+      "table_name": "users",  
       "total_inserts": 10000,
       "inserts_per_query": 1000,
       "generation_seed": 42,
@@ -67,13 +53,6 @@
     
     - `table_name`:  
       Имя таблицы, в которую будут вставляться данные.
-    
-    - `table_definition` _(Новое)_:  
-      JSON-объект, описывающий столбцы таблицы, движок и ключ сортировки.  
-      Если указано, скрипт попытается создать таблицу на основе этого определения.
-    
-    - `schema_file_path` _(Необязательно)_:  
-      Путь к SQL-файлу схемы. Если `table_definition` присутствует, это поле будет проигнорировано.
     
     - `total_inserts`:  
       Общее количество строк для генерации и вставки.
@@ -96,7 +75,7 @@
 
 
 3.  **Запустите скрипт:**
-    Убедитесь, что целевая таблица (`users` в примере) уже создана в ClickHouse.
+    Убедитесь, что целевая таблица уже создана в ClickHouse.
     ```bash
     python src/main.py
     ```
