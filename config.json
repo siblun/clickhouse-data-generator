@@ -4,19 +4,6 @@
   "clickhouse_host": "localhost",
   "clickhouse_port": 9000,
   "table_name": "products",
-  "table_definition": {
-    "columns": [
-      {"name": "id", "type": "UInt64"},
-      {"name": "product_name", "type": "String"},
-      {"name": "category", "type": "LowCardinality(String)"},
-      {"name": "price", "type": "Float64"},
-      {"name": "stock_quantity", "type": "UInt32"},
-      {"name": "last_updated", "type": "DateTime64(3, 'UTC')"},
-      {"name": "is_available", "type": "Bool"}
-    ],
-    "engine": "MergeTree",
-    "order_by": "id"
-  },
   "schema_file_path": null,
   "inserts_per_query": 50,
   "total_inserts": 500,
