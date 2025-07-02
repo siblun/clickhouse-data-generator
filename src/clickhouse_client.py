@@ -1,7 +1,7 @@
 """
-Модуль для взаимодействия с базой данных ClickHouse.
+Module for interacting with the ClickHouse database.
 
-Предоставляет класс-клиент для выполнения запросов и пакетной вставки данных.
+Provides a client class for executing queries and batch data insertion.
 """
 
 import logging
@@ -11,21 +11,21 @@ from typing import List, Dict, Any
 
 class ClickHouseDataLoader:
     """
-    Класс-обертка над `clickhouse-driver` для упрощения операций с ClickHouse.
+    Wrapper class around `clickhouse-driver` to simplify ClickHouse operations.
 
-    Предоставляет методы для выполнения произвольных запросов, пакетной вставки
-    данных и получения схемы таблицы.
+    Provides methods for executing arbitrary queries, batch data insertion,
+    and retrieving table schema.
     """
 
     def __init__(self, host: str, port: int, user: str, password: str = ""):
         """
-        Инициализирует клиент и устанавливает соединение.
+        Initializes the client and establishes a connection.
 
         Args:
-            host (str): Хост сервера ClickHouse.
-            port (int): TCP-порт для нативного протокола.
-            user (str): Имя пользователя.
-            password (str): Пароль пользователя.
+            host (str): ClickHouse server host.
+            port (int): TCP port for the native protocol.
+            user (str): Username.
+            password (str): User password.
         """
         try:
             self.client = Client(host=host, port=port, user=user, password=password)
@@ -36,14 +36,14 @@ class ClickHouseDataLoader:
 
     def execute_query(self, query: str, params: Any = None) -> list:
         """
-        Выполняет произвольный запрос к ClickHouse.
+        Executes an arbitrary query against ClickHouse.
 
         Args:
-            query (str): SQL-запрос для выполнения.
-            params (Any, optional): Параметры для запроса.
+            query (str): SQL query to execute.
+            params (Any, optional): Parameters for the query.
 
         Returns:
-            list: Результат выполнения запроса.
+            list: Result of the query execution.
         """
         try:
             return self.client.execute(query, params)
@@ -53,11 +53,11 @@ class ClickHouseDataLoader:
 
     def insert_data(self, table_name: str, data: List[Dict]):
         """
-        Выполняет пакетную (batch) вставку данных в указанную таблицу.
+        Performs batch insertion of data into the specified table.
 
         Args:
-            table_name (str): Имя целевой таблицы.
-            data (List[Dict]): Список словарей, где каждый словарь представляет строку.
+            table_name (str): Name of the target table.
+            data (List[Dict]): A list of dictionaries, where each dictionary represents a row.
 
         Returns:
             None
@@ -77,14 +77,14 @@ class ClickHouseDataLoader:
 
     def get_table_schema(self, table_name: str, database: str = 'default') -> list[dict]:
         """
-        Получает схему таблицы (имена и типы колонок) из системной таблицы ClickHouse.
+        Retrieves the table schema (column names and types) from ClickHouse's system table.
 
         Args:
-            table_name (str): Имя таблицы для получения схемы.
-            database (str, optional): Имя базы данных. По умолчанию 'default'.
+            table_name (str): Name of the table to retrieve the schema for.
+            database (str, optional): Database name. Defaults to 'default'.
 
         Returns:
-            list[dict]: Список словарей, описывающих каждую колонку: {'name': str, 'type': str}.
+            list[dict]: A list of dictionaries, describing each column: {'name': str, 'type': str}.
         """
         query = "SELECT name, type FROM system.columns WHERE database = %(database)s AND table = %(table)s"
         params = {'database': database, 'table': table_name}

@@ -3,10 +3,20 @@
   "clickhouse_password": "",
   "clickhouse_host": "localhost",
   "clickhouse_port": 9000,
-  "table_name": "your_table_name",
+  "table_name": "products",
   "schema_file_path": null,
-  "total_inserts": 1000,
-  "inserts_per_query": 100,
-  "generation_seed": null,
-  "hints": {}
+  "inserts_per_query": 50,
+  "total_inserts": 500,
+  "generation_seed": 456,
+  "hints": {
+    "product_name": ["Laptop", "Mouse", "Keyboard", "Monitor", "Webcam", "Headphones"],
+    "category": ["Electronics", "Peripherals", "Accessories"],
+    "price": [10.00, 1500.00],
+    "stock_quantity": [0, 500],
+    "last_updated": {
+        "start": "2023-01-01 00:00:00",
+        "end": "2025-06-30 23:59:59"
+    },
+    "is_available": [true]
+  }
 }

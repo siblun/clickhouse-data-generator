@@ -1,12 +1,9 @@
 """
-Модуль для определения схемы таблицы ClickHouse.
+Module for determining ClickHouse table schema.
 
-Поддерживает два способа получения схемы:
-1. Парсинг `CREATE TABLE` из предоставленного SQL-файла.
-2. Запрос к системным таблицам ClickHouse.
+Supports retrieving the schema directly from ClickHouse's system tables.
 """
 import logging
-import re
 from typing import List, Dict
 
 from clickhouse_driver import Client
@@ -14,73 +11,30 @@ from clickhouse_driver import Client
 
 class SchemaParser:
     """
-    Класс, инкапсулирующий логику получения схемы таблицы.
+    Class encapsulating the logic for retrieving table schema.
     """
 
     def __init__(self, client: Client):
         """
-        Инициализирует парсер.
+        Initializes the parser.
 
         Args:
-            client (Client): Активный клиент `clickhouse-driver` для взаимодействия с БД.
+            client (Client): An active `clickhouse-driver` client for database interaction.
         """
         self.client = client
 
-    def parse_schema_from_sql_file(self, file_path: str) -> List[Dict]:
-        """
-        Парсит `CREATE TABLE` DDL из файла и извлекает имена и типы колонок.
-
-        Примечание:
-            Этот метод использует регулярные выражения и может быть ненадёжным
-            для сложных SQL-схем (например, с `DEFAULT`, `CODEC`, комментариями).
-            Для продакшн-использования рекомендуется получать схему напрямую из БД.
-
-        Args:
-            file_path (str): Абсолютный путь к `.sql` файлу.
-
-        Returns:
-            List[Dict]: Список словарей, описывающих колонки, или пустой список при ошибке.
-        """
-        try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                sql_ddl = file.read()
-
-            match = re.search(r'CREATE\s+TABLE\s+\S+\s*\((.+)\)\s*ENGINE', sql_ddl, re.DOTALL | re.IGNORECASE)
-            if not match:
-                logging.warning("Could not find 'CREATE TABLE (...)' block in SQL file: %s", file_path)
-                return []
-
-            columns_str = match.group(1)
-            columns_str = re.sub(r'--.*', '', columns_str)
-            columns_str = re.sub(r'/\*.*?\*/', '', columns_str, flags=re.DOTALL)
-
-            column_defs = re.findall(r'^\s*`?(\w+)`?\s+([\w\(\),\'\s]+?)(?:\s+DEFAULT.*|,|\s*\n)', columns_str,
-                                     re.MULTILINE)
-
-            columns = []
-            for col_name, col_type_full in column_defs:
-                col_type = col_type_full.strip().split()[0]
-                columns.append({'name': col_name, 'type': col_type})
-
-            return columns
-        except FileNotFoundError:
-            logging.error("Schema file not found at path: %s", file_path)
-            return []
-        except Exception as e:
-            logging.error("Error parsing SQL schema file '%s': %s", file_path, e)
-            return []
 
     def get_schema_from_clickhouse(self, table_name: str, database: str = "default") -> List[Dict]:
         """
-        Получает схему таблицы напрямую из системной таблицы `system.columns`.
-        Это наиболее надежный способ.
+        Retrieves the table schema directly from ClickHouse's `system.columns` table.
+        This is the most reliable method.
 
         Args:
-            table_name (str): Имя таблицы.
-            database (str, optional): Имя базы данных.
+            table_name (str): The name of the table.
+            database (str, optional): The name of the database.
 
         Returns:
-            List[Dict]: Список словарей, описывающих колонки.
+            List[Dict]: A list of dictionaries describing the columns.
         """
         try:
             query = "SELECT name, type FROM system.columns WHERE database = %(database)s AND table = %(table)s"
