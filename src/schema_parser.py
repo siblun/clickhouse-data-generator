@@ -4,7 +4,6 @@ Module for determining ClickHouse table schema.
 Supports retrieving the schema directly from ClickHouse's system tables.
 """
 import logging
-import re
 from typing import List, Dict
 
 from clickhouse_driver import Client
