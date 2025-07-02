@@ -83,11 +83,9 @@ def main():
             rows_to_generate_in_batch = min(inserts_per_query, total_inserts - generated_rows_count)
 
             current_batch = data_generator.generate_rows_batch(rows_to_generate_in_batch)
-
-            if current_batch:
-                clickhouse_loader.insert_data(table_name, current_batch)
-                generated_rows_count += len(current_batch)
-                logging.info("  Inserted %d/%d rows...", generated_rows_count, total_inserts)
+            clickhouse_loader.insert_data(table_name, current_batch)
+            generated_rows_count += len(current_batch)
+            logging.info("  Inserted %d/%d rows...", generated_rows_count, total_inserts)
 
         logging.info("--- Data generation and insertion completed successfully! ---")
         logging.info(f"Total %d rows inserted into table '{table_name}'.", generated_rows_count)
