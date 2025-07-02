@@ -77,7 +77,6 @@ class ConfigParser:
         """Returns grouped information about the target table."""
         return {
             'name': self.get_setting('table_name', required=True),
-            'schema_file_path': self.get_setting('schema_file_path'),
         }
 
     def get_generation_settings(self) -> Dict[str, Any]:
@@ -88,10 +87,3 @@ class ConfigParser:
             'generation_seed': self.get_setting('generation_seed'),
             'hints': self.get_setting('hints', default={}),
         }
-
-    def get_table_definition(self) -> Dict[str, Any]:
-        """
-        Returns the full table definition for dynamic CREATE TABLE statement.
-        """
-        return self.get_setting('table_definition', required=False, default=None)
-
