@@ -4,12 +4,12 @@ Main executable file for running the data generation and insertion process.
 This script performs the following steps:
 1. Reads configuration from the `config.json` file.
 2. Establishes a connection to ClickHouse.
-3. Dynamically creates the target table from definition in config.json if specified,
-   or ensures it exists.
-4. Determines the schema of the target table directly from ClickHouse.
-5. Initializes the data generator based on the schema and "hints" from the config.
-6. Generates data in batches and inserts them into the table.
-7. Outputs logging messages about the execution progress.
+3. Retrieves the schema of the target table directly from ClickHouse.
+   If the table does not exist or is inaccessible, an error will be raised,
+   as this tool requires the table to pre-exist.
+4. Initializes the data generator based on the schema and "hints" from the config.
+5. Generates data in batches and inserts them into the table.
+6. Outputs logging messages about the execution progress.
 """
 
 import logging
@@ -44,7 +44,6 @@ def main():
         gen_settings = config_parser.get_generation_settings()
 
         table_name = table_info['name']
-        schema_file_path = table_info.get('schema_file_path')
         total_inserts = gen_settings['total_inserts']
         inserts_per_query = gen_settings['inserts_per_query']
         generation_seed = gen_settings['generation_seed']
@@ -95,7 +94,7 @@ def main():
 
     except FileNotFoundError as e:
         logging.error("Critical error: File not found. %s", e)
-        logging.error("Please ensure the configuration file and/or schema file exist at the specified paths.")
+        logging.error("Please ensure the configuration file exists at the specified paths.")
     except ValueError as e:
         logging.error("Configuration or schema error: %s", e)
     except Exception as e:
